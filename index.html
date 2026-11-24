@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Commit Chord: hear any GitHub repo</title>
+<meta name="description" content="Type a public GitHub repo and hear its last 100 commits as a tune. Merges are chords, fixes are plucks, quiet weeks are rests.">
+<meta name="theme-color" content="#f3eee3">
+<meta property="og:title" content="Commit Chord">
+<meta property="og:description" content="Hear any public GitHub repo. Its last 100 commits, played as a tune.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231c1a17'/%3E%3Crect x='6' y='18' width='5' height='8' fill='%23f3eee3'/%3E%3Crect x='13.5' y='11' width='5' height='15' fill='%23e8572a'/%3E%3Crect x='21' y='6' width='5' height='20' fill='%23f3eee3'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f3eee3; --surface:#fbf8f1; --ink:#1c1a17; --muted:#625b50; --line:#d6cdbb; --accent:#c63a0c;
+  --display:"Bricolage Grotesque",system-ui,sans-serif; --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  --r:10px;
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--mono);font-size:16px;line-height:1.5}
+.wrap{max-width:1120px;margin:0 auto;padding:0 20px}
+header{display:flex;justify-content:space-between;align-items:center;padding:20px 0;border-bottom:1px solid var(--line)}
+.mark{font-family:var(--display);font-weight:800;font-size:20px;letter-spacing:-.01em}
+header a{color:var(--ink);font-size:14px;padding:12px 0;display:inline-block}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(44px,9vw,104px);line-height:.95;letter-spacing:-.03em;margin:40px 0 16px;max-width:11ch}
+.lede{font-size:18px;max-width:52ch;margin:0 0 28px;color:var(--ink)}
+form{display:flex;gap:8px;flex-wrap:wrap;max-width:720px}
+.field{flex:1 1 260px;min-width:0;max-width:100%;display:flex;align-items:center;background:var(--surface);border:1px solid var(--ink);border-radius:var(--r);padding:0 14px}
+.field span{color:var(--muted);white-space:nowrap}
+input[type=text]{flex:1;min-width:0;border:0;background:transparent;font:inherit;color:var(--ink);padding:14px 0 14px 2px;outline:0}
+.field:focus-within{outline:3px solid var(--accent);outline-offset:2px}
+button{font:600 16px var(--mono);border-radius:var(--r);border:1px solid var(--ink);background:var(--surface);color:var(--ink);padding:0 18px;min-height:52px;cursor:pointer;transition:transform .15s}
+button:hover{transform:translateY(-1px)}
+button:active{transform:translateY(1px)}
+button:focus-visible,a:focus-visible,select:focus-visible,input[type=range]:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button.go{background:var(--accent);border-color:var(--accent);color:var(--surface);min-width:120px}
+button:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.try{margin:14px 0 0;font-size:14px;color:var(--muted);display:flex;gap:6px 14px;flex-wrap:wrap;align-items:center}
+.try button{min-height:44px;padding:0 12px;font-size:14px;font-weight:400;border-color:var(--line)}
+.deck{margin:36px 0 0;background:var(--surface);border:1px solid var(--ink);border-radius:var(--r);overflow:hidden}
+.roll{overflow-x:auto;border-bottom:1px solid var(--line)}
+canvas{display:block;height:260px}
+.now{padding:14px 16px;min-height:76px;border-bottom:1px solid var(--line)}
+.now b{font-weight:600}
+.now .msg{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.now .meta{font-size:14px;color:var(--muted)}
+.ctl{display:flex;gap:10px 22px;flex-wrap:wrap;align-items:center;padding:12px 16px}
+.ctl label{font-size:14px;color:var(--muted);display:flex;align-items:center;gap:8px;min-height:44px}
+select{font:inherit;font-size:14px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:0 10px;min-height:44px}
+input[type=range]{accent-color:var(--accent);width:120px;min-height:44px}
+.ctl .sp{flex:1}
+.ctl button{min-height:44px;font-size:14px}
+.who{display:flex;gap:6px 18px;flex-wrap:wrap;padding:0 16px 14px;font-size:14px;color:var(--muted);list-style:none;margin:0}
+.who i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px}
+.note{font-size:14px;color:var(--muted);margin:12px 0 0;min-height:21px}
+.note.bad{color:var(--accent)}
+.how{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0;margin:56px 0 0;border-top:1px solid var(--ink)}
+.how div{padding:18px 18px 18px 0;border-bottom:1px solid var(--line)}
+.how h2{font-family:var(--display);font-weight:800;font-size:24px;margin:0 0 4px;letter-spacing:-.01em}
+.how p{margin:0;font-size:14px;color:var(--muted)}
+footer{margin:48px 0 32px;font-size:14px;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){button{transition:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <span class="mark">Commit Chord</span>
+  <a href="https://github.com/vinceychu/commit-chord">Source</a>
+</header>
+<main>
+  <h1>Hear any repo.</h1>
+  <p class="lede">Type a public GitHub repo. Its last 100 commits become a tune you can play, share and download.</p>
+  <form id="f">
+    <label class="field"><span>github.com/</span><input id="repo" type="text" aria-label="owner/repo" placeholder="owner/repo" value="torvalds/linux" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
+    <button class="go" id="go" type="submit">Play</button>
+  </form>
+  <p class="try">or try
+    <button type="button" data-r="facebook/react">facebook/react</button>
+    <button type="button" data-r="python/cpython">python/cpython</button>
+    <button type="button" data-r="rust-lang/rust">rust-lang/rust</button>
+  </p>
+  <p class="note" id="note" role="status"></p>
+
+  <section class="deck" aria-label="Player">
+    <div class="roll" id="roll"><canvas id="c" role="img" aria-label="Piano roll of the commits"></canvas></div>
+    <div class="now" id="now"><span class="msg">Press Play. Sound on.</span><span class="meta">Each bar is one commit, oldest on the left.</span></div>
+    <div class="ctl">
+      <label>Mood <select id="mood"><option value="sunny">Sunny</option><option value="moody">Moody</option><option value="odd">Odd</option></select></label>
+      <label>Tempo <input id="bpm" type="range" min="70" max="170" value="116" aria-label="Tempo"></label>
+      <span class="sp"></span>
+      <button type="button" id="share" disabled>Copy link</button>
+      <button type="button" id="wav" disabled>Download WAV</button>
+    </div>
+    <ul class="who" id="who"></ul>
+  </section>
+
+  <section class="how" aria-label="How it maps">
+    <div><h2>Hash is pitch</h2><p>The first byte of each commit hash picks the note. Same repo, same tune, every time.</p></div>
+    <div><h2>Author is voice</h2><p>Each author gets a color, an octave and a timbre. Solo projects sound solo.</p></div>
+    <div><h2>Merges are chords</h2><p>Fixes are short plucks. Reverts slide downward. Long messages hold longer.</p></div>
+    <div><h2>Silence is real</h2><p>A day without commits is a rest. A week is a longer one.</p></div>
+  </section>
+</main>
+<footer>Runs in your browser. Reads the public GitHub API, stores nothing, sends nothing anywhere else. MIT licensed.</footer>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+const SCALES={sunny:[0,2,4,7,9],moody:[0,3,5,7,10],odd:[0,2,4,6,8,10]};
+const COLORS=['#1c1a17','#c63a0c','#0f6e6e','#a8770a','#7a3b69','#3d5a80'];
+const WAVES=['triangle','sine','sawtooth'];
+let song=null, player=null;
+
+const hash=s=>{let h=2166136261;for(const c of s){h^=c.charCodeAt(0);h=Math.imul(h,16777619)}return h>>>0};
+const parseRepo=v=>{const m=v.trim().replace(/^https?:\/\/(www\.)?github\.com\//i,'').replace(/\.git$/,'').match(/^([\w.-]+)\/([\w.-]+)/);return m?m[1]+'/'+m[2]:null};
+
+function demoCommits(repo){ // deterministic stand-in when GitHub can't be reached; clearly labelled in the UI
+  let s=hash(repo)||1; const r=()=>((s=Math.imul(s^(s>>>15),2246822507)^Math.imul(s^(s>>>13),3266489909))>>>0)/4294967296;
+  const names=['ada','lin','sol','kit'], words=['Add parser','Fix off-by-one in loop','Refactor cache layer for clarity','Merge branch feature','Update docs','Revert flaky test change','Tidy imports'];
+  let t=Date.now()-90*864e5; const out=[];
+  for(let i=0;i<64;i++){t+=r()*3*864e5; const m=words[Math.floor(r()*words.length)];
+    out.push({sha:Math.floor(r()*0xffffffff).toString(16).padStart(8,'0')+'0000',msg:m,author:names[Math.floor(r()*r()*names.length)],date:t,merge:m.startsWith('Merge')})}
+  return out;
+}
+async function fetchCommits(repo){
+  const res=await fetch('https://api.github.com/repos/'+repo+'/commits?per_page=100',{headers:{Accept:'application/vnd.github+json'}});
+  if(res.status===404) throw new Error('notfound');
+  if(res.status===403||res.status===429) throw new Error('rate');
+  if(!res.ok) throw new Error('http');
+  const j=await res.json();
+  if(!Array.isArray(j)||!j.length) throw new Error('empty');
+  return j.map(c=>({sha:c.sha,msg:(c.commit.message||'').split('\n')[0],author:(c.author&&c.author.login)||c.commit.author.name||'unknown',
+    date:Date.parse(c.commit.author.date),merge:(c.parents||[]).length>1})).reverse();
+}
+
+function compose(repo,commits,mood,bpm){
+  const scale=SCALES[mood], root=45+hash(repo)%10, step=60/bpm/2;
+  const counts={}; commits.forEach(c=>counts[c.author]=(counts[c.author]||0)+1);
+  const order=Object.keys(counts).sort((a,b)=>counts[b]-counts[a]); const rank={}; order.forEach((a,i)=>rank[a]=i);
+  let t=0,prev=null; const notes=[];
+  for(const c of commits){
+    if(prev!==null){const gap=(c.date-prev)/864e5; t+=(gap>7?2:gap>1?1:0)*step}
+    prev=c.date;
+    const a=rank[c.author], deg=parseInt(c.sha.slice(0,2),16)%(scale.length*2);
+    const midi=root+12+scale[deg%scale.length]+12*Math.floor(deg/scale.length)+12*((a%3)-1)*(a?1:0);
+    const low=c.msg.toLowerCase(), kind=c.merge||low.startsWith('merge')?'merge':low.startsWith('revert')?'revert':/^(fix|bug|hotfix)/.test(low)?'fix':'note';
+    const len=kind==='fix'?1:c.msg.length>60?3:c.msg.length>28?2:1;
+    notes.push({t,dur:len*step,midi,kind,color:COLORS[Math.min(a,COLORS.length-1)],wave:WAVES[a%WAVES.length],c});
+    t+=len*step;
+  }
+  const bass=[]; for(let b=0;b<t;b+=step*8) bass.push({t:b,dur:step*6,midi:root-12+(Math.floor(b/(step*8))%4===3?scale[2]:0)});
+  return {repo,notes,bass,total:t+step*2,step,order,counts,lo:Math.min(...notes.map(n=>n.midi)),hi:Math.max(...notes.map(n=>n.midi))};
+}
+
+const hz=m=>440*Math.pow(2,(m-69)/12);
+function voice(ctx,out,t,m,dur,wave,vol,slide){
+  const o=ctx.createOscillator(), g=ctx.createGain(); o.type=wave; o.frequency.setValueAtTime(hz(m),t);
+  if(slide) o.frequency.exponentialRampToValueAtTime(hz(m-7),t+dur);
+  g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(vol,t+0.012); g.gain.exponentialRampToValueAtTime(0.0008,t+dur);
+  o.connect(g).connect(out); o.start(t); o.stop(t+dur+0.03);
+}
+function playNote(ctx,out,n,at){
+  const v=n.wave==='sawtooth'?0.09:0.17;
+  if(n.kind==='merge'){[0,4,7].forEach((d,i)=>voice(ctx,out,at+i*0.018,n.midi+(i?[0,3,7][i]+(d===4?1:0):0),n.dur*1.6,n.wave,v*0.75))}
+  else if(n.kind==='fix') voice(ctx,out,at,n.midi+12,Math.min(n.dur,0.11),'square',0.06);
+  else voice(ctx,out,at,n.midi,n.dur*1.15,n.wave,v,n.kind==='revert');
+}
+function master(ctx){const g=ctx.createGain(); g.gain.value=0.8; const c=ctx.createDynamicsCompressor(); g.connect(c).connect(ctx.destination); return g}
+
+function stop(){
+  if(!player) return; clearInterval(player.timer); cancelAnimationFrame(player.raf);
+  try{player.out.disconnect()}catch(e){} player.ctx.close(); player=null; $('go').textContent='Play'; draw(-1);
+}
+function start(){
+  stop(); const ctx=new (window.AudioContext||window.webkitAudioContext)(); const out=master(ctx); ctx.resume();
+  const t0=ctx.currentTime+0.12; let i=0,b=0;
+  const tick=()=>{const h=ctx.currentTime-t0+0.35;
+    while(i<song.notes.length&&song.notes[i].t<h){playNote(ctx,out,song.notes[i],t0+song.notes[i].t);i++}
+    while(b<song.bass.length&&song.bass[b].t<h){voice(ctx,out,t0+song.bass[b].t,song.bass[b].midi,song.bass[b].dur,'sine',0.2);b++}
+    if(ctx.currentTime-t0>song.total) stop();
+  };
+  const frame=()=>{if(!player)return; draw(ctx.currentTime-t0); player.raf=requestAnimationFrame(frame)};
+  player={ctx,out,timer:setInterval(tick,60)}; tick(); frame(); $('go').textContent='Stop';
+}
+
+const PX=7; let lastIdx=-2;
+function draw(pos){
+  const cv=$('c'), roll=$('roll'), dpr=Math.min(window.devicePixelRatio||1,2), H=260;
+  const steps=song?song.total/song.step:120, W=Math.max(roll.clientWidth,Math.ceil(steps*PX)+24);
+  if(cv.width!==W*dpr){cv.width=W*dpr;cv.height=H*dpr;cv.style.width=W+'px'}
+  const g=cv.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,W,H);
+  g.strokeStyle='#d6cdbb'; g.lineWidth=1;
+  for(let y=30;y<H;y+=50){g.beginPath();g.moveTo(0,y+.5);g.lineTo(W,y+.5);g.stroke()}
+  if(!song) return;
+  const sx=(W-24)/song.total, span=Math.max(1,song.hi-song.lo), y=m=>H-24-(m-song.lo)/span*(H-52);
+  let idx=-1;
+  song.notes.forEach((n,i)=>{
+    const on=pos>=n.t&&pos<n.t+n.dur; if(pos>=n.t) idx=i;
+    g.fillStyle=n.color; g.globalAlpha=pos<0||pos>=n.t?1:0.35;
+    const x=12+n.t*sx, w=Math.max(3,n.dur*sx-1.5), h=on?12:7;
+    if(n.kind==='merge'){g.fillRect(x,y(n.midi)-h/2-9,w,3);g.fillRect(x,y(n.midi)-h/2+h+6,w,3)}
+    g.fillRect(x,y(n.midi)-h/2,w,h);
+  });
+  g.globalAlpha=1;
+  if(pos>=0){const x=12+pos*sx; g.fillStyle='#c63a0c'; g.fillRect(x,0,2,H);
+    if(x>roll.scrollLeft+roll.clientWidth*0.75||x<roll.scrollLeft) roll.scrollLeft=x-roll.clientWidth*0.25}
+  if(idx!==lastIdx&&idx>=0){lastIdx=idx; const n=song.notes[idx];
+    $('now').innerHTML='<span class="msg"></span><span class="meta"></span>';
+    $('now').firstChild.textContent=n.c.msg||'(no message)';
+    $('now').lastChild.textContent=n.c.sha.slice(0,7)+' · '+n.c.author+' · '+new Date(n.c.date).toISOString().slice(0,10)+(n.kind!=='note'?' · '+n.kind:'')}
+  if(pos<0) lastIdx=-2;
+}
+function legend(){
+  const ul=$('who'); ul.textContent='';
+  song.order.slice(0,6).forEach((a,i)=>{const li=document.createElement('li'), sw=document.createElement('i'); sw.style.background=COLORS[Math.min(i,COLORS.length-1)];
+    li.append(sw,document.createTextNode(a+' ×'+song.counts[a])); ul.append(li)});
+  if(song.order.length>6){const li=document.createElement('li'); li.textContent='+'+(song.order.length-6)+' more'; ul.append(li)}
+}
+
+let raw=null;
+function rebuild(){ if(!raw) return; song=compose(raw.repo,raw.commits,$('mood').value,+$('bpm').value); legend(); draw(-1) }
+async function load(repo,autoplay){
+  const note=$('note'); note.className='note'; note.textContent='Fetching '+repo+'…'; $('go').disabled=true;
+  let commits, demo=false;
+  try{commits=await fetchCommits(repo)}
+  catch(e){
+    if(e.message==='notfound'||e.message==='empty'){note.className='note bad'; note.textContent=e.message==='empty'?'That repo has no commits yet.':'No public repo at github.com/'+repo+'. Check the spelling.'; $('go').disabled=false; return false}
+    commits=demoCommits(repo); demo=true;
+    note.className='note bad'; note.textContent=(e.message==='rate'?'GitHub rate limit reached for your network (60 an hour). ':'Could not reach GitHub. ')+'Playing a made-up demo pattern, not real commits. Try again later.';
+  }
+  raw={repo,commits,demo}; rebuild();
+  if(!demo) note.textContent=commits.length+' commits from '+repo+', '+new Date(commits[0].date).toISOString().slice(0,10)+' to '+new Date(commits[commits.length-1].date).toISOString().slice(0,10)+'.';
+  $('go').disabled=false; $('share').disabled=$('wav').disabled=false;
+  history.replaceState(null,'','?repo='+encodeURIComponent(repo).replace('%2F','/')+'&mood='+$('mood').value+'&bpm='+$('bpm').value);
+  if(autoplay) start();
+  return true;
+}
+
+$('f').addEventListener('submit',async e=>{
+  e.preventDefault();
+  if(player){stop();return}
+  const repo=parseRepo($('repo').value);
+  if(!repo){$('note').className='note bad';$('note').textContent='Use the form owner/repo, for example torvalds/linux.';return}
+  if(raw&&raw.repo===repo){start();return}
+  // create audio inside the click so mobile browsers allow sound after the fetch
+  await load(repo,true);
+});
+document.querySelectorAll('[data-r]').forEach(b=>b.addEventListener('click',()=>{stop();$('repo').value=b.dataset.r;load(b.dataset.r,true)}));
+$('repo').addEventListener('input',()=>{if(player)stop()});
+for(const id of ['mood','bpm']) $(id).addEventListener('change',()=>{const was=!!player; stop(); rebuild();
+  if(raw) history.replaceState(null,'','?repo='+raw.repo+'&mood='+$('mood').value+'&bpm='+$('bpm').value); if(was) start()});
+$('share').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(location.href);$('share').textContent='Copied'}catch(e){$('share').textContent='Copy from address bar'} setTimeout(()=>$('share').textContent='Copy link',1600)});
+$('wav').addEventListener('click',async()=>{
+  const b=$('wav'); b.disabled=true; b.textContent='Rendering…';
+  const sr=44100, ctx=new OfflineAudioContext(2,Math.ceil((song.total+1.5)*sr),sr), out=master(ctx);
+  song.notes.forEach(n=>playNote(ctx,out,n,0.05+n.t)); song.bass.forEach(n=>voice(ctx,out,0.05+n.t,n.midi,n.dur,'sine',0.2));
+  const buf=await ctx.startRendering(), L=buf.getChannelData(0), R=buf.getChannelData(1), n=L.length, dv=new DataView(new ArrayBuffer(44+n*4));
+  const w=(o,s)=>{for(let i=0;i<s.length;i++)dv.setUint8(o+i,s.charCodeAt(i))};
+  w(0,'RIFF');dv.setUint32(4,36+n*4,true);w(8,'WAVEfmt ');dv.setUint32(16,16,true);dv.setUint16(20,1,true);dv.setUint16(22,2,true);dv.setUint32(24,sr,true);dv.setUint32(28,sr*4,true);dv.setUint16(32,4,true);dv.setUint16(34,16,true);w(36,'data');dv.setUint32(40,n*4,true);
+  for(let i=0;i<n;i++){dv.setInt16(44+i*4,Math.max(-1,Math.min(1,L[i]))*32767,true);dv.setInt16(46+i*4,Math.max(-1,Math.min(1,R[i]))*32767,true)}
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([dv],{type:'audio/wav'})); a.download=song.repo.replace('/','-')+'.wav'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+  b.disabled=false; b.textContent='Download WAV';
+});
+addEventListener('resize',()=>draw(-1));
+(function init(){
+  const q=new URLSearchParams(location.search), r=q.get('repo')&&parseRepo(q.get('repo'));
+  if(SCALES[q.get('mood')]) $('mood').value=q.get('mood');
+  const bpm=+q.get('bpm'); if(bpm>=70&&bpm<=170) $('bpm').value=bpm;
+  draw(-1);
+  if(r){$('repo').value=r; load(r,false)}
+})();
+</script>
+</body>
+</html>
