@@ -2,7 +2,7 @@
 
 Hear any public GitHub repo. Type `owner/repo` and its last 100 commits play as a tune.
 
-**Live:** https://commit-chord.pages.dev
+**Live:** https://vinceychu.github.io/commit-chord/
 
 | In the repo | In the tune |
 | --- | --- |
